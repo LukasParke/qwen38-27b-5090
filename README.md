@@ -32,7 +32,6 @@ verified 24/25 on a greedy eval.
 | [`config/llama-swap.example.yaml`](config/) | production llama-swap profiles (API key redacted): base / x4 concurrency / maxctx / experimental fill + nvfp4-ingest |
 | [`scripts/`](scripts/) | reproducible build scripts for all three binary prefixes |
 | [`draft-training/`](draft-training/) | SpecForge drafter-training pipeline scripts (capture → train → probe → export) |
-| [`docs/draft-incoai-email.md`](docs/) | open request for block-14/16 DFlash2 drafters |
 
 ## Key findings (why this config wins)
 

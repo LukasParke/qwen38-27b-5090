@@ -20,7 +20,6 @@ Additional profiles: `qwen3.8-27b-x4` (concurrency), `qwen3.8-27b-maxctx` (26214
 
 ## Delivered 2026-08-24 (Benchmark-7 execution)
 
-- `draft-incoai-email.md` — request for block-14/16 DFlash2 drafter (send manually)
 - `~/llm/llamacpp-upstream-20260824` — upstream-master rebase build (`upstream-master-20260824`
   branch @0d0efe92f; MMVQ_MAX_BATCH env knob carried over #26079 tables). Cutover-ready;
   A/B bench pending maintenance window.
