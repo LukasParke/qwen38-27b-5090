@@ -1,0 +1,41 @@
+diff --git a/ggml/src/ggml-cuda/mmvq.cu b/ggml/src/ggml-cuda/mmvq.cu
+index c99923804..d420509f5 100644
+--- a/ggml/src/ggml-cuda/mmvq.cu
++++ b/ggml/src/ggml-cuda/mmvq.cu
+@@ -2,9 +2,26 @@
+ #include "quantize.cuh"
+ #include "unary.cuh"
+ #include "vecdotq.cuh"
+-
+ #include <cstdint>
+ #include <type_traits>
++#include <cstdlib>
++
++// Runtime override of the max batch size dispatched to the per-token MMVQ kernels.
++// Speculative-decoding verify batches (n_draft+1 tokens) re-read the full weight
++// matrix once per token under MMVQ; GEMM (MMQ) reads it once per step regardless
++// of token count, which is dramatically faster for batches >= 2 on Blackwell.
++// GGML_CUDA_MMVQ_MAX_BATCH=1 sends all multi-token batches to MMQ.
++static int mmvq_max_batch_env() {
++    static const int v = [] {
++        const char * s = getenv("GGML_CUDA_MMVQ_MAX_BATCH");
++        if (!s) {
++            return (int) MMVQ_MAX_BATCH_SIZE;
++        }
++        const int n = atoi(s);
++        return n < 1 ? 1 : n;
++    }();
++    return v;
++}
+ 
+ typedef float (*vec_dot_q_cuda_t)(const void * __restrict__ vbq, const block_q8_1 * __restrict__ bq8_1, const int & kbx, const int & iqs);
+ 
+@@ -333,7 +350,7 @@ bool ggml_cuda_should_use_mmvq(enum ggml_type type, int cc, int64_t ne11) {
+                 return ne11 <= MMVQ_MAX_BATCH_SIZE;
+         }
+     }
+-    return ne11 <= MMVQ_MAX_BATCH_SIZE;
++    return ne11 <= mmvq_max_batch_env();
+ }
+ 
+ // Device constexpr: returns the max batch size for the current arch+type at compile time.

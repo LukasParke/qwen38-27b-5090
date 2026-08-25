@@ -1,0 +1,76 @@
+# llama-swap configuration — Qwen3.8-27B profiles (RTX 5090)
+# REDACTED EXAMPLE: replace apiKeys with your own secret before use.
+# Profiles: base (fast), x4 (concurrency), maxctx (262k), fill/nvfp4-ingest/upstream (experimental)
+
+healthCheckTimeout: 300
+logToStdout: both
+apiKeys:
+- sk-PASTE-YOUR-KEY-HERE
+macros:
+  server_df2: 'env LD_LIBRARY_PATH=/home/luke/llm/cuda-dflash2/lib /home/luke/llm/cuda-dflash2/bin/llama-server --host 127.0.0.1 --port ${PORT} -fa on -ngl 999 --no-mmap --jinja -ub 1024 -b 1024 --parallel
+    1
+
+    '
+  server_df2g: 'env LD_LIBRARY_PATH=/home/luke/llm/cuda-dflash2-gemm/lib GGML_CUDA_MMVQ_MAX_BATCH=1 /home/luke/llm/cuda-dflash2-gemm/bin/llama-server --host 127.0.0.1 --port ${PORT} -fa on -ngl 999 --no-mmap
+    --jinja -ub 1024 -b 1024
+
+    '
+  server_up: 'env LD_LIBRARY_PATH=/home/luke/llm/llamacpp-upstream-20260824/lib GGML_CUDA_MMVQ_MAX_BATCH=1 /home/luke/llm/llamacpp-upstream-20260824/bin/llama-server --host 127.0.0.1 --port ${PORT} -fa
+    on -ngl 999 --no-mmap --jinja -ub 1024 -b 1024
+
+    '
+  server: 'env LD_LIBRARY_PATH=/home/luke/llm/cuda/lib /home/luke/llm/cuda/bin/llama-server --host 127.0.0.1 --port ${PORT} -fa on -ngl 999 --no-mmap --jinja -ub 4096 -b 4096 --parallel 1
+
+    '
+  models: /home/luke/models
+hooks:
+  on_startup:
+    preload:
+    - qwen3.8-27b
+models:
+  qwen3.8-27b:
+    ttl: 0
+    cmd: '${server_df2g} -m ${models}/Qwen3.8-27B-GGUF-IQ4XS/Qwen3.8-27B-UD-IQ4_XS.gguf --mmproj ${models}/Qwen3.8-27B-GGUF/mmproj-F16.gguf -c 131072 --spec-type draft-dflash --model-draft ${models}/Qwen3.8-27B-DFlash2-GGUF/Qwen3.8-27B-DFlash2-Q4_K_M.gguf
+      --spec-draft-n-max 8 -bs --cache-reuse 256 --reasoning-effort medium --cache-ram 24576
+
+      '
+  qwen3.8-27b-x4:
+    ttl: 0
+    cmd: '${server_df2g} -m ${models}/Qwen3.8-27B-GGUF-IQ4XS/Qwen3.8-27B-UD-IQ4_XS.gguf --mmproj ${models}/Qwen3.8-27B-GGUF/mmproj-F16.gguf -c 131072 --parallel 4 --spec-type draft-dflash --model-draft
+      ${models}/Qwen3.8-27B-DFlash2-GGUF/Qwen3.8-27B-DFlash2-Q4_K_M.gguf --spec-draft-n-max 8 -bs --cache-reuse 256 --reasoning-effort medium --cache-ram 24576
+
+      '
+  qwen3.8-27b-maxctx:
+    ttl: 0
+    cmd: '${server_df2g} -m ${models}/Qwen3.8-27B-GGUF-IQ4XS/Qwen3.8-27B-UD-IQ4_XS.gguf --mmproj ${models}/Qwen3.8-27B-GGUF/mmproj-F16.gguf -c 262144 -ctk q8_0 -ctv q8_0 -ctkd q4_0 -ctvd q4_0 --spec-type
+      draft-dflash --model-draft ${models}/Qwen3.8-27B-DFlash2-GGUF/Qwen3.8-27B-DFlash2-Q4_K_M.gguf --spec-draft-n-max 8 -bs --cache-reuse 256 --reasoning-effort medium --cache-ram 24576
+
+      '
+  qwen3.8-27b-upstream:
+    ttl: 0
+    cmd: '${server_up} -m ${models}/Qwen3.8-27B-GGUF-IQ4XS/Qwen3.8-27B-UD-IQ4_XS.gguf --mmproj ${models}/Qwen3.8-27B-GGUF/mmproj-F16.gguf -c 131072 --spec-type draft-dflash --model-draft ${models}/Qwen3.8-27B-DFlash2-GGUF/Qwen3.8-27B-DFlash2-Q4_K_M.gguf
+      --spec-draft-n-max 8 -bs --cache-reuse 256 --reasoning-effort medium --cache-ram 24576
+
+      '
+  qwen3.8-27b-nvfp4-ingest:
+    ttl: 300
+    cmd: '${server_up} -m ${models}/Qwen3.8-27B-NVFP4-RadixArk/Qwen3.8-27B-NVFP4.gguf -c 32768 -ub 2048 -b 2048 -fa on -ngl 999 --no-mmap --jinja
+
+      '
+  qwen3.8-27b-fill:
+    ttl: 300
+    cmd: 'env LD_LIBRARY_PATH=/home/luke/llm/llamacpp-afap-cascade/lib GGML_CUDA_MMVQ_MAX_BATCH=1 SPEC_TAIL_N=7 /home/luke/llm/llamacpp-afap-cascade/bin/llama-server --host 127.0.0.1 --port ${PORT} -fa
+      on -ngl 999 --no-mmap --jinja -ub 1024 -b 1024 -c 131072 --spec-type draft-dflash --model-draft ${models}/Qwen3.8-27B-DFlash2-GGUF/Qwen3.8-27B-DFlash2-Q4_K_M.gguf --spec-draft-n-max 14 -bs --cache-reuse
+      256 --reasoning-effort medium --cache-ram 24576
+
+      '
+groups:
+  gpu:
+    swap: true
+    exclusive: true
+    members:
+    - qwen3.8-27b
+    - qwen3.8-27b-x4
+    - qwen3.8-27b-maxctx
+    - qwen3.8-27b-upstream
+    - qwen3.8-27b-fill
